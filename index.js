@@ -1,13 +1,17 @@
 const express = require("express");
 const fs = require("fs");
 const os = require("os");
+const ws = require("ws");
 
 const app = express();
+const wss = new ws.Server({ clientTracking: false, noServer: true });
 
 const port = process.env.PORT || 5000;
 const host = process.env.HOST || "0.0.0.0";
 
 const router = express.Router();
+
+app.set("json spaces", 2);
 
 const kubernetesData = () => {
   let data = {};
@@ -22,8 +26,8 @@ const kubernetesData = () => {
   return data;
 };
 
-router.use((req, res) => {
-  let dump = {
+const dumpData = (req) => {
+  return {
     method: req.method,
     httpVersion: req.httpVersion,
     path: req.path,
@@ -46,8 +50,10 @@ router.use((req, res) => {
       hostname: os.hostname(),
     },
   };
+};
 
-  res.json(dump);
+router.use((req, res, next) => {
+  res.json(dumpData(req));
 });
 
 app.use("/", router);
@@ -55,6 +61,18 @@ app.use("/", router);
 const server = app.listen(port, host, () =>
   console.log(`Listening at http://${host}:${port}`)
 );
+
+server.on("upgrade", function (request, socket, head) {
+  wss.handleUpgrade(request, socket, head, function (ws) {
+    wss.emit("connection", ws, request);
+  });
+});
+
+wss.on("connection", function (ws) {
+  ws.on("message", function (msg) {
+    ws.send(msg);
+  });
+});
 
 var signals = {
   SIGHUP: 1,
