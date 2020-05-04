@@ -28,6 +28,7 @@ const kubernetesData = () => {
 
 const dumpData = (req) => {
   return {
+    version: process.env.VERSION,
     method: req.method,
     httpVersion: req.httpVersion,
     path: req.path,
